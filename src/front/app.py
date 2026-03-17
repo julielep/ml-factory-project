@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import requests
+
 # Ajoute la racine du projet au PYTHONPATH
 ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
@@ -8,8 +10,6 @@ if str(ROOT_DIR) not in sys.path:
 
 import pandas as pd
 import streamlit as st
-
-from src.api.load_model import load_production_model
 
 # -----------------------------
 # CONFIG
@@ -34,10 +34,10 @@ TEST_DATA_PATH = ROOT_DIR / "data" / "iris_test.csv"
 # -----------------------------
 # CHARGEMENT MODELE
 # -----------------------------
-@st.cache_resource
-def get_model():
-    model, version = load_production_model()
-    return model, version
+# @st.cache_resource
+# def get_model():
+#     model, version = load_production_model()
+#     return model, version
 
 
 # -----------------------------
@@ -85,12 +85,12 @@ def load_test_row_into_form(df, row_index):
 def main():
     init_session_state()
 
-    # Chargement modèle
-    try:
-        model, version = get_model()
-    except Exception as e:
-        st.error(f"❌ Erreur lors du chargement du modèle : {e}")
-        st.stop()
+    # # Chargement modèle
+    # try:
+    #     model, version = get_model()
+    # except Exception as e:
+    #     st.error(f"❌ Erreur lors du chargement du modèle : {e}")
+    #     st.stop()
 
     # Chargement dataset test
     test_df = load_test_dataset()
@@ -101,8 +101,6 @@ def main():
     st.title("🌸 Iris Prediction App")
     st.caption("Simulation d'une utilisation réelle avec MLflow Model Registry + alias Production")
 
-    # Bannière / badge version modèle
-    st.success(f"🟢 Modèle en ligne : **iris_model@Production** | **Version active : v{version}**")
 
     # Bouton reload modèle
     col_reload1, col_reload2 = st.columns([1, 5])
@@ -120,7 +118,7 @@ def main():
         st.header("⚙️ Contrôle")
 
         st.markdown("### 📦 Modèle")
-        st.info(f"Alias : Production\n\nVersion : v{version}")
+        # st.info(f"Alias : Production\n\nVersion : v{version}")
 
         if test_df is not None:
             st.markdown("### 🧪 Charger une ligne de test")
@@ -206,62 +204,58 @@ def main():
 
         if predict_clicked:
             try:
-                # Prédiction
                 features = [[sepal_length, sepal_width, petal_length, petal_width]]
-                prediction = model.predict(features)
-                pred_class = int(prediction[0])
-                pred_label = CLASS_NAMES.get(pred_class, f"Classe inconnue ({pred_class})")
+                # Prédiction
+                payload = {
+                    "sepal_length": sepal_length,
+                    "sepal_width": sepal_width,
+                    "petal_length": petal_length,
+                    "petal_width": petal_width
+                }
+                # Appeler l'API (utilise le nom du service Docker ou localhost:9090)
+                # Note: depuis Windows, utilise localhost:9090. Depuis Docker, utilise api:9090.
+                response = requests.post("http://api:9090/predict", json=payload)
+                
+                if response.status_code == 200:
+                    rep = response.json()
+                    result = rep.get('prediction') 
+                    version = rep.get('version', '?') 
+                    # Bannière / badge version modèle
+                    st.success(f"🟢 Modèle en ligne : **iris_model@Production** | **Version active : v{version}**")
+                    pred_label = CLASS_NAMES.get(result)
+                    st.metric("Espèce prédite", pred_label)
+                else:
+                    st.error("L'API a renvoyé une erreur.")
 
                 st.success("✅ Prédiction effectuée")
-                st.metric("Espèce prédite", pred_label)
+    
 
-                # Probabilités si disponibles
-                # if hasattr(model, "predict_proba"):
-                proba = model.predict_proba(features)[0]
-
-                proba_df = pd.DataFrame({
-                    "Espèce": [CLASS_NAMES[i] for i in range(len(proba))],
-                    "Probabilité": proba
-                })
-
-                st.markdown("### 📈 Probabilités de prédiction")
-                st.bar_chart(
-                    proba_df.set_index("Espèce")
-                )
-
-                # Affichage détaillé
-                for i, p in enumerate(proba):
-                    st.write(f"**{CLASS_NAMES[i]}** : `{p:.2%}`")
-
-            # else:
-                st.info("Le modèle ne supporte pas `predict_proba()`")
-
-            except Exception as e:
-                st.error(f"❌ Erreur pendant la prédiction : {e}")
+            except Exception:
+                st.error("Impossible de contacter l'api")
         else:
             st.info("Clique sur **Faire une prédiction** pour voir le résultat")
 
     st.divider()
 
-    # -----------------------------
-    # APERÇU DATASET TEST
-    # -----------------------------
-    st.subheader("🧪 Aperçu du dataset de test")
+    # # -----------------------------
+    # # APERÇU DATASET TEST
+    # # -----------------------------
+    # st.subheader("🧪 Aperçu du dataset de test")
 
-    if test_df is not None:
-        st.dataframe(test_df.head(10), use_container_width=True)
-    else:
-        st.warning("Le fichier `data/iris_test.csv` n'a pas été trouvé.")
+    # if test_df is not None:
+    #     st.dataframe(test_df.head(10), use_container_width=True)
+    # else:
+    #     st.warning("Le fichier `data/iris_test.csv` n'a pas été trouvé.")
 
-    # -----------------------------
-    # FOOTER TECHNIQUE
-    # -----------------------------
-    with st.expander("ℹ️ Informations techniques"):
-        st.write("**Nom du modèle :** iris_model")
-        st.write("**Alias utilisé :** Production")
-        st.write(f"**Version active :** v{version}")
-        st.write("**Source du modèle :** MLflow Model Registry + MinIO")
-        st.write("**Dataset de test :** data/iris_test.csv")
+    # # -----------------------------
+    # # FOOTER TECHNIQUE
+    # # -----------------------------
+    # with st.expander("ℹ️ Informations techniques"):
+    #     st.write("**Nom du modèle :** iris_model")
+    #     st.write("**Alias utilisé :** Production")
+    #     st.write(f"**Version active :** v{version}")
+    #     st.write("**Source du modèle :** MLflow Model Registry + MinIO")
+    #     st.write("**Dataset de test :** data/iris_test.csv")
 
 
 if __name__ == "__main__":

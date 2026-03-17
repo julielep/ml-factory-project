@@ -61,7 +61,7 @@ def model_info():
 
 @app.post("/predict")
 def predict(features: IrisFeatures):
-    model = load_production_model()
+    model, version = load_production_model()
 
     # Préparer les données dans le format attendu par MLflow / scikit-learn
     input_data = [[
@@ -74,7 +74,8 @@ def predict(features: IrisFeatures):
     prediction = model.predict(input_data)
 
     return {
-        "prediction": int(prediction[0])
+        "prediction": int(prediction[0]),
+        "version": version
     }
 
 
