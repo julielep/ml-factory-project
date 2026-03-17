@@ -61,6 +61,6 @@ client = MlflowClient()
 latest_version = client.get_latest_versions("iris_model", stages=["None"])[0].version
 
 # On lui attribue l'alias 'Production'
-# client.set_registered_model_alias("iris_model", "Production", latest_version)
+client.set_registered_model_alias("iris_model", "production", latest_version)
 
 # print(f"✅ Alias 'Production' assigné à la version {latest_version} de iris_model")

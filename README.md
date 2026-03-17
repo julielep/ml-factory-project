@@ -27,9 +27,17 @@ uv sync
 
 ### 2. Lancer Docker
 ```bash
-docker compose up -d
+docker compose up -d 
+#ou
+docker-compose up --build 
 ```
+🔄 Comparaison des commandes de démarrage
 
+| Commande | Reconstruit l'image ? | Utilise le cache ? | Quand l'utiliser ? |
+| :--- | :--- | :--- | :--- |
+| **`docker compose up -d`** | **Non** (sauf si absente) | Oui | Routine, redémarrage du PC sans modif de code. |
+| **`docker compose up --build`** | **Oui** | Oui (couches inchangées) | Après une modification de ton code source. |
+| **`docker compose up -d --build`** | **Oui** | Oui | **Combo gagnant** : Met à jour et libère le terminal. |
 ### 3. Configurer le stockage initial (Important)
 Avant de lancer votre premier entraînement, vous devez créer le bucket de destination :
 

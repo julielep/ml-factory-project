@@ -197,9 +197,9 @@ def main():
         }])
 
         st.markdown("### 📊 Données envoyées au modèle")
-        st.dataframe(input_df, use_container_width=True)
+        st.dataframe(input_df, width='stretch')
 
-        predict_clicked = st.button("🔮 Faire une prédiction", use_container_width=True)
+        predict_clicked = st.button("🔮 Faire une prédiction", width='stretch')
 
     # -----------------------------
     # PREDICTION + PROBAS

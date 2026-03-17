@@ -9,8 +9,8 @@ services:
       - "9000:9000"  # port de communication "machine à machine".
       - "9001:9001"  # interface graphique que tu ouvres dans ton navigateur.
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
     volumes:
       - minio_data:/data
 
@@ -20,7 +20,7 @@ services:
     # working_dir: /app
     command: >
       mlflow server
-      --backend-store-uri sqlite:///mlflow.db
+      --backend-store-uri sqlite:///mlflow/mlflow.db
       --default-artifact-root s3://mlflow/
       --host 0.0.0.0
       --allowed-hosts "mlflow:*, localhost:*, minio:*"
@@ -28,8 +28,8 @@ services:
       - "5000:5000"
     environment:
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     depends_on:
       - minio
     volumes:
@@ -43,11 +43,10 @@ services:
     ports:
       - "9090:9090"
     environment:
-      FASTAPI_PORT: 9090
       MLFLOW_TRACKING_URI: http://mlflow:5000
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     depends_on:
       - minio
       - mlflow
@@ -61,7 +60,6 @@ services:
       - "8501:8501"
     environment:
       API_URL: http://api:9090
-      MLFLOW_TRACKING_URI: http://mlflow:5000
 
     depends_on:
       - api

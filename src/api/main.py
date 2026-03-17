@@ -1,26 +1,3 @@
-# import os
-
-# import boto3
-
-# os.environ['MLFLOW_S3_ENDPOINT_URL'] = "http://localhost:9000"
-# os.environ['AWS_ACCESS_KEY_ID'] = "minioadmin"
-# os.environ['AWS_SECRET_ACCESS_KEY'] = "minioadmin"
-
-# def prepare_minio():
-#     """Vérifie si le bucket 'mlflow' existe, sinon le crée"""
-
-
-#     s3 = boto3.client('s3', endpoint_url=os.environ['MLFLOW_S3_ENDPOINT_URL'])
-
-
-#     buckets = [b['Name'] for b in s3.list_buckets()['Buckets']]
-
-
-#     if 'mlflow' not in buckets:
-#         s3.create_bucket(Bucket='mlflow')
-#         print("Bucket 'mlflow' créé avec succès.")
-
-
 """src/api/main.py"""
 import os
 
@@ -33,6 +10,8 @@ from src.api.load_model import load_production_model
 
 app = FastAPI(title="MLflow Model API")
 
+# Elle s'exécutera dès qu'Uvicorn importera ce fichier
+prepare_minio()
 
 class IrisFeatures(BaseModel):
     sepal_length: float
