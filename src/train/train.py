@@ -1,9 +1,15 @@
 import mlflow
 import mlflow.sklearn
+from dotenv import load_dotenv
 from mlflow import MlflowClient
-from services.prep_data import prepare_data
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
+
+from src.train.services.prep_data import prepare_data
+
+load_dotenv()
+
 
 
 def train_and_register(model, params, X_train, X_test, y_train, y_test):
@@ -28,7 +34,7 @@ def train_and_register(model, params, X_train, X_test, y_train, y_test):
         # 4. Log + enregistrement du modèle dans MLflow Model Registry
         mlflow.sklearn.log_model(
             sk_model=model,
-            artifact_path="RandomForest",
+            artifact_path="LogisticRegression",
             registered_model_name=model_name
         )
 
@@ -40,12 +46,13 @@ X_train, X_test, y_train, y_test = prepare_data()
 
 # Modèle
 rf_model = RandomForestClassifier()
+lr_model = LogisticRegression()
 
 # Paramètres à logger
 params = rf_model.get_params()
 
 # Entraîner + enregistrer
-train_and_register(rf_model, params, X_train, X_test, y_train, y_test)
+train_and_register(lr_model, params, X_train, X_test, y_train, y_test)
 
 # 3. Gestion de l'Alias 'Production' via MlflowClient 
 client = MlflowClient()
@@ -54,6 +61,6 @@ client = MlflowClient()
 latest_version = client.get_latest_versions("iris_model", stages=["None"])[0].version
 
 # On lui attribue l'alias 'Production'
-client.set_registered_model_alias("iris_model", "Production", latest_version)
+# client.set_registered_model_alias("iris_model", "Production", latest_version)
 
-print(f"✅ Alias 'Production' assigné à la version {latest_version} de iris_model")
+# print(f"✅ Alias 'Production' assigné à la version {latest_version} de iris_model")

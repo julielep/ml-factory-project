@@ -1,68 +1,73 @@
+version: "3.9"
+
 services:
-  mlflow:
-    image: ghcr.io/mlflow/mlflow
-    container_name: mlflow_server
-    depends_on:
-      - minio
-    ports:
-      - "5000:5000"
-    environment:
-
-      MLFLOW_S3_PORT: ${MLFLOW_S3_PORT}
-      MLFLOW_S3_ENDPOINT_URL: "http://minio:${MLFLOW_S3_PORT}"
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-    command: >
-      mlflow server
-      --backend-store-uri sqlite:///mlflow.db
-      --default-artifact-root s3://mlflow/
-      --host 0.0.0.0
-    networks:
-      - backend
-
   minio:
-    image: minio/minio
+    image: minio/minio:latest
     container_name: minio
+    command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
       - "9001:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
-    networks:
-      - backend
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow
+    container_name: mlflow
+    # working_dir: /app
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root s3://mlflow/
+      --host 0.0.0.0
+      --allowed-hosts "mlflow:*, localhost:*, minio:*"
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    depends_on:
+      - minio
+    volumes:
+      - mlflow_model:/mlflow
 
   api:
-    build: ./src/api
-    container_name: api_backend
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
+    build:
+      context: .
+      dockerfile: ./src/api/Dockerfile
+    container_name: fastapi_api
     ports:
-      - "8000:8000"
-    networks:
-      - backend
-      - front-api
+      - "9090:9090"
+    environment:
+      FASTAPI_PORT: 9090
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    depends_on:
+      - minio
+      - mlflow
 
   frontend:
-    build: ./app_front
+    build:
+      context: .
+      dockerfile: ./src/front/Dockerfile
     container_name: streamlit_front
-    volumes:
-      - ./app_front:/app
-    environment:
-      API_URL: http://api_backend:8000
     ports:
       - "8501:8501"
+    environment:
+      API_URL: http://api:9090
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
     depends_on:
       - api
-    networks:
-      - front-api
-
-networks:
-  backend:
-  front-api:
 
 volumes:
   minio_data:
+  mlflow_model:

@@ -1,0 +1,22 @@
+FROM python:3.11-slim-bookworm
+
+# Installer uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Dossier de travail dans le conteneur
+WORKDIR /app
+
+# Copier les dépendances depuis la racine du projet (car context: .)
+COPY pyproject.toml ./
+
+# Installer les dépendances
+RUN uv pip install --system --no-cache -r pyproject.toml
+
+# Copier tout le projet
+COPY . .
+
+# Exposer le port FastAPI
+EXPOSE 9090
+
+# Lancer FastAPI proprement
+CMD ["uv", "run", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "9090"]
