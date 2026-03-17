@@ -1,6 +1,11 @@
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+import os
+
 import requests
 
 # Ajoute la racine du projet au PYTHONPATH
@@ -214,8 +219,14 @@ def main():
                 }
                 # Appeler l'API (utilise le nom du service Docker ou localhost:9090)
                 # Note: depuis Windows, utilise localhost:9090. Depuis Docker, utilise api:9090.
-                response = requests.post("http://api:9090/predict", json=payload)
+                api_base_url = os.getenv("STREAMLIT_API_URL", "http://api:9090")
                 
+                # 2. On construit l'URL complète pour la route /predict
+                predict_url = f"{api_base_url}/predict"
+
+                # 3. Appel à l'API
+                response = requests.post(predict_url, json=payload, timeout=10)
+                                
                 if response.status_code == 200:
                     rep = response.json()
                     result = rep.get('prediction') 
