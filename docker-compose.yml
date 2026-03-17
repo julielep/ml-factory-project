@@ -6,8 +6,8 @@ services:
     container_name: minio
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"  # port de communication "machine à machine".
+      - "9001:9001"  # interface graphique que tu ouvres dans ton navigateur.
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
