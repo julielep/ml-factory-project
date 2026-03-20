@@ -209,7 +209,6 @@ def main():
 
         if predict_clicked:
             try:
-                features = [[sepal_length, sepal_width, petal_length, petal_width]]
                 # Prédiction
                 payload = {
                     "sepal_length": sepal_length,
@@ -235,10 +234,11 @@ def main():
                     st.success(f"🟢 Modèle en ligne : **iris_model@Production** | **Version active : v{version}**")
                     pred_label = CLASS_NAMES.get(result)
                     st.metric("Espèce prédite", pred_label)
+                    st.success("✅ Prédiction effectuée")
                 else:
                     st.error("L'API a renvoyé une erreur.")
 
-                st.success("✅ Prédiction effectuée")
+               
     
 
             except Exception:

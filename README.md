@@ -61,7 +61,7 @@ uv run python -m src.train.train
 **Étape 2** : Vérification technique
 MLflow UI : http://localhost:5000 (Vérifiez que le modèle est bien enregistré dans le Registry).
 
-MinIO Console : http://localhost:9001 (Vérifiez la présence des artefacts dans le bucket mlflow).
+MinIO Console : http://localhost:9001 (Vérifiez la présence des artefacts dans le bucket mlflow). (minioadmin)
 
 **Étape 3** : Prédiction
 API (Swagger) : http://localhost:9090/docs
@@ -108,3 +108,7 @@ Le projet utilise des variables d'environnement pour permettre la communication 
 | **Voir les logs de l'API** | `docker logs -f fastapi_api` |
 | **Supprimer les données (volumes)** | `docker compose down -v` |
 | **Vérifier l'état des conteneurs** | `docker compose ps` |
+
+
+### Amélioration 
+Diviser le pyproject.py pour le front et l'api -> évite de charger des bibliothèques inutiles. (Ici chaque service charge toutes les bibliothèques -> tous est chargé 2 fois)
