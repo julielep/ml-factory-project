@@ -1,33 +1,69 @@
+version: "3.9"
+
 services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"  # port de communication "machine à machine".
+      - "9001:9001"  # interface graphique que tu ouvres dans ton navigateur.
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - minio_data:/data
+
   mlflow:
     image: ghcr.io/mlflow/mlflow
-    container_name: mlflow_server
-    depends_on: [minio]
-    ports: ["5000:5000"]
-    environment:
-      - MLFLOW_S3_ENDPOINT_PORT=${MLFLOW_S3_ENDPOINT_PORT}
-      - MLFLOW_S3_ENDPOINT_URL=http://minio:${MLFLOW_S3_ENDPOINT_PORT}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    container_name: mlflow
+    # working_dir: /app
     command: >
       mlflow server
-      --backend-store-uri sqlite:///mlflow.db
+      --backend-store-uri sqlite:///mlflow/mlflow.db
       --default-artifact-root s3://mlflow/
       --host 0.0.0.0
-
-
-  minio:
-    image: minio/minio
-    container_name: minio
+      --allowed-hosts "mlflow:*, localhost:*, minio:*"
     ports:
-      - "9000:9000" # API S3
-      - "9001:9001" # Interface Web (Console)
+      - "5000:5000"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      - minio
     volumes:
-      - minio_data:/data  # dossier /data de MinIO 
+      - mlflow_model:/mlflow
+
+  api:
+    build:
+      context: .
+      dockerfile: ./src/api/Dockerfile
+    container_name: fastapi_api
+    ports:
+      - "9090:9090"
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      - minio
+      - mlflow
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./src/front/Dockerfile
+    container_name: streamlit_front
+    ports:
+      - "8501:8501"
+    environment:
+      API_URL: http://api:9090
+
+    depends_on:
+      - api
 
 volumes:
-  minio_data:  
+  minio_data:
+  mlflow_model:

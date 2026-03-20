@@ -1,0 +1,22 @@
+FROM python:3.11-slim-bookworm
+
+# Installer uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Dossier de travail dans le conteneur
+WORKDIR /app
+
+# Copier les dépendances depuis la racine du projet
+COPY pyproject.toml ./
+
+# Installer les dépendances
+RUN uv pip install --system --no-cache -r pyproject.toml
+
+# Copier tout le projet
+COPY . .
+
+# Exposer le port Streamlit
+EXPOSE 8501
+
+# Lancer Streamlit
+CMD ["uv", "run", "streamlit", "run", "src/front/app.py", "--server.address=0.0.0.0", "--server.port=8501"]
