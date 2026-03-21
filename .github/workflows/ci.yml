@@ -25,7 +25,6 @@ jobs:
     needs: security-scan
     runs-on: ubuntu-latest
     
-    # INDISPENSABLE : Le conteneur MinIO pour que le port 9000 réponde
     services:
       minio:
         image: bitnami/minio:latest
@@ -58,8 +57,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "minioadmin"
           MLFLOW_TRACKING_URI: "sqlite:///mlflow.db"
         run: |
-          # Petit debug pour être SÛR de ce que Python voit
-          echo "Endpoint: $MLFLOW_S3_ENDPOINT_URL"
           uv run pytest --cov=fastapi_api --cov=app_front .
 
   documentation-check:
