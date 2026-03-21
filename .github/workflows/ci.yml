@@ -31,19 +31,19 @@ jobs:
     
     # Ajout du service MinIO pour simuler le stockage S3
     services:
-      minio:
-        image: minio/minio
-        ports:
-          - 9000:9000
-        env:
-          MINIO_ROOT_USER: admin
-          MINIO_ROOT_PASSWORD: password
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      args: server /data
+        minio:
+          image: minio/minio
+          ports:
+            - 9000:9000
+          env:
+            MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
+            MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
+          options: >-
+            --health-cmd "curl -f http://localhost:9000/minio/health/live"
+            --health-interval 10s
+            --health-timeout 5s
+            --health-retries 5
+            server /data
 
     steps:
       - uses: actions/checkout@v4
