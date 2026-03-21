@@ -28,7 +28,7 @@ jobs:
       services:
         minio:
           # On utilise une version taguée pour éviter l'erreur de manifest
-          image: minio/minio:RELEASE.2024-01-31T20-20-33Z
+          image: minio/minio:latest
           ports:
             - 9000:9000
           env:
@@ -52,11 +52,11 @@ jobs:
             TESTING: "True"
             PYTHONPATH: "."
             # On utilise 127.0.0.1 pour éviter les problèmes de résolution localhost
-            MLFLOW_S3_ENDPOINT_URL: "http://127.0.0.1:9000"
-            AWS_ACCESS_KEY_ID: "minioadmin"
-            AWS_SECRET_ACCESS_KEY: "minioadmin"
+            MLFLOW_S3_ENDPOINT_URL: http://127.0.0.1:9000
+            AWS_ACCESS_KEY_ID: minioadmin
+            AWS_SECRET_ACCESS_KEY: minioadmin
             # On force MLflow en local pour éviter le Connection Refused sur le port 5000
-            MLFLOW_TRACKING_URI: "sqlite:///mlflow_test.db"
+            MLFLOW_TRACKING_URI: sqlite:///mlflow_test.db
           run: |
             # On attend que le service soit prêt
             echo "Waiting for MinIO..."
