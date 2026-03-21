@@ -3,12 +3,10 @@ name: CI Quality & Security
 on:
   push:
     branches: [ main, dev, master ]
-
   pull_request:
-    branches: [master]
+    branches: [ master ]
 
 jobs:
-  # 1. SÉCURITÉ
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -17,22 +15,32 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Check for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # 2. QUALITÉ (LINT + TESTS)
   test-and-lint:
     name: Quality and Tests
     needs: security-scan
     runs-on: ubuntu-latest
+    
+    # INDISPENSABLE : Le conteneur MinIO pour que le port 9000 réponde
+    services:
+      minio:
+        image: bitnami/minio:latest
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+
     steps:
       - uses: actions/checkout@v4
+      
       - name: Install uv
-
-        uses: astral-sh/setup-uv@v5 # Version 5 recommandée
+        uses: astral-sh/setup-uv@v5
+        
       - name: Set up Python
         run: uv python install 3.12
 
@@ -49,24 +57,21 @@ jobs:
           AWS_ACCESS_KEY_ID: "minioadmin"
           AWS_SECRET_ACCESS_KEY: "minioadmin"
           MLFLOW_TRACKING_URI: "sqlite:///mlflow.db"
-        run: uv run pytest --cov=fastapi_api --cov=app_front .
+        run: |
+          # Petit debug pour être SÛR de ce que Python voit
+          echo "Endpoint: $MLFLOW_S3_ENDPOINT_URL"
+          uv run pytest --cov=fastapi_api --cov=app_front .
 
-  # 3. DOCUMENTATION
   documentation-check:
     name: Documentation Build
-
     needs: test-and-lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Install uv
         uses: astral-sh/setup-uv@v5
-
       - name: Build HTML Documentation
         run: |
-          # S'assure que le dossier de sortie existe
           mkdir -p build/html
-          
           uv run sphinx-build -b html docs/source/ build/html
