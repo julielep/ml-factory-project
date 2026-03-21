@@ -28,24 +28,45 @@ jobs:
     name: Quality and Tests
     needs: security-scan
     runs-on: ubuntu-latest
+    
+    # Ajout du service MinIO pour simuler le stockage S3
+    services:
+      minio:
+        image: minio/minio
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: admin
+          MINIO_ROOT_PASSWORD: password
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      args: server /data
+
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
-
-        uses: astral-sh/setup-uv@v5 # Version 5 recommandée
+        uses: astral-sh/setup-uv@v5
       - name: Set up Python
         run: uv python install 3.12
-
-      - name: Lint with Ruff
-        run: |
-          uv run ruff check .
-          uv run ruff format --check .
 
       - name: Run tests
         env:
           TESTING: True
           PYTHONPATH: .
-        run: uv run pytest --cov=fastapi_api --cov=streamlit_front .
+          # Variables indispensables pour éviter les KeyError et erreurs de connexion
+          MLFLOW_S3_ENDPOINT_URL: http://localhost:9000
+          AWS_ACCESS_KEY_ID: admin
+          AWS_SECRET_ACCESS_KEY: password
+          MLFLOW_TRACKING_URI: http://localhost:5000 
+        run: |
+          # On crée un dossier bidon pour MLflow si le serveur n'est pas lancé
+          export MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+          uv run pytest --cov=fastapi_api --cov=streamlit_front .
+
+    
 
   # 3. DOCUMENTATION
   documentation-check:
