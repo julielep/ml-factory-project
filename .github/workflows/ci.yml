@@ -7,6 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
+  # 1. SÉCURITÉ
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -20,49 +21,53 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # 2. QUALITÉ (LINT + TESTS)
   test-and-lint:
-      name: Quality and Tests
-      needs: security-scan
-      runs-on: ubuntu-latest
+    name: Quality and Tests
+    needs: security-scan
+    runs-on: ubuntu-latest
+    
+    services:
+      minio:
+        image: minio/minio:latest
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        # On utilise options uniquement pour le check de santé
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
       
-      services:
-        minio:
-          # On utilise une version taguée pour éviter l'erreur de manifest
-          image: minio/minio:latest
-          ports:
-            - 9000:9000
-          env:
-            MINIO_ROOT_USER: admin
-            MINIO_ROOT_PASSWORD: password
-          # CRUCIAL : GitHub injecte cela AVANT le nom de l'image si mal placé.
-          # Ici, on force la commande de démarrage correcte.
-          options: server /data
-
-      steps:
-        - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         
-        - name: Install uv
-          uses: astral-sh/setup-uv@v5
-          
-        - name: Set up Python
-          run: uv python install 3.12
+      - name: Set up Python
+        run: uv python install 3.12
 
-        - name: Run tests
-          env:
-            TESTING: "True"
-            PYTHONPATH: "."
-            # On utilise 127.0.0.1 pour éviter les problèmes de résolution localhost
-            MLFLOW_S3_ENDPOINT_URL: http://127.0.0.1:9000
-            AWS_ACCESS_KEY_ID: minioadmin
-            AWS_SECRET_ACCESS_KEY: minioadmin
-            # On force MLflow en local pour éviter le Connection Refused sur le port 5000
-            MLFLOW_TRACKING_URI: sqlite:///mlflow_test.db
-          run: |
-            # On attend que le service soit prêt
-            echo "Waiting for MinIO..."
-            timeout 20s sh -c 'until curl -s http://127.0.0.1:9000/minio/health/live; do sleep 2; done'
-            uv run pytest --cov=fastapi_api --cov=app_front .
+      - name: Run tests
+        env:
+          TESTING: "True"
+          PYTHONPATH: "."
+          # Utilisation de 127.0.0.1 pour la stabilité réseau en CI
+          MLFLOW_S3_ENDPOINT_URL: "http://127.0.0.1:9000"
+          AWS_ACCESS_KEY_ID: "minioadmin"
+          AWS_SECRET_ACCESS_KEY: "minioadmin"
+          # On force MLflow en local (SQLite) pour éviter de chercher le port 5000
+          MLFLOW_TRACKING_URI: "sqlite:///mlflow_test.db"
+        run: |
+          echo "Waiting for MinIO service to be healthy..."
+          # Sécurité supplémentaire : on attend que le port réponde
+          timeout 30s sh -c 'until curl -s http://127.0.0.1:9000/minio/health/live; do sleep 2; done'
+          uv run pytest --cov=fastapi_api --cov=app_front .
 
+  # 3. DOCUMENTATION
   documentation-check:
     name: Documentation Build
     needs: test-and-lint
