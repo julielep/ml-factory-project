@@ -21,8 +21,8 @@ prepare_minio()
 
 
 class IrisFeatures(BaseModel):
-    """Classe représentant les caractéristiques de l'Iris pour la prédiction.
-    """
+    """Classe représentant les caractéristiques de l'Iris pour la prédiction."""
+
     sepal_length: float
     sepal_width: float
     petal_length: float
@@ -79,19 +79,18 @@ def predict(features: IrisFeatures):
     model, version = load_production_model()
 
     # Préparer les données dans le format attendu par MLflow / scikit-learn
-    input_data = [[
-        features.sepal_length,
-        features.sepal_width,
-        features.petal_length,
-        features.petal_width
-    ]]
+    input_data = [
+        [
+            features.sepal_length,
+            features.sepal_width,
+            features.petal_length,
+            features.petal_width,
+        ]
+    ]
 
     prediction = model.predict(input_data)
 
-    return {
-        "prediction": int(prediction[0]),
-        "version": version
-    }
+    return {"prediction": int(prediction[0]), "version": version}
 
 
 if __name__ == "__main__":

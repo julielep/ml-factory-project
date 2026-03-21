@@ -11,7 +11,6 @@ from src.train.services.prep_data import prepare_data
 load_dotenv()
 
 
-
 def train_and_register(model, params, X_train, X_test, y_train, y_test):
     # Configuration MLflow AVANT le run
     mlflow.set_tracking_uri("http://localhost:5000")
@@ -35,7 +34,7 @@ def train_and_register(model, params, X_train, X_test, y_train, y_test):
         mlflow.sklearn.log_model(
             sk_model=model,
             artifact_path="LogisticRegression",
-            registered_model_name=model_name
+            registered_model_name=model_name,
         )
 
     print(f"✅ Modèle enregistré dans MLflow Registry : {model_name}")
@@ -54,10 +53,10 @@ params = rf_model.get_params()
 # Entraîner + enregistrer
 train_and_register(lr_model, params, X_train, X_test, y_train, y_test)
 
-# 3. Gestion de l'Alias 'Production' via MlflowClient 
+# 3. Gestion de l'Alias 'Production' via MlflowClient
 client = MlflowClient()
 
-# On récupère la toute dernière version créée 
+# On récupère la toute dernière version créée
 latest_version = client.get_latest_versions("iris_model", stages=["None"])[0].version
 
 # On lui attribue l'alias 'Production'

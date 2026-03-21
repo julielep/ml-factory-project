@@ -1,4 +1,5 @@
 """src/api/load_model.py"""
+
 import os
 
 import mlflow
@@ -18,10 +19,7 @@ mlflow.set_tracking_uri(MLFLOW_URI)
 client = MlflowClient(tracking_uri=MLFLOW_URI)
 
 # Cache pour éviter de recharger le modèle si la version n'a pas changé
-state = {
-    "model": None,
-    "version": None
-}
+state = {"model": None, "version": None}
 
 MODEL_NAME = "iris_model"
 MODEL_ALIAS = "production"
