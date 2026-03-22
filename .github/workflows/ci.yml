@@ -34,7 +34,7 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           uv python install 3.12
 
-      - name: Run logic tests
+      - name: Run tests
         env:
           TESTING: "True"
           PYTHONPATH: "."
@@ -47,7 +47,7 @@ jobs:
         run: |
           # On lance pytest uniquement sur les dossiers train et front
           # On exclut les tests qui touchent à l'API/MinIO si besoin
-          uv run pytest src/train src/front --cov=src/train --cov=src/front
+          uv run pytest tests/ 
 
   documentation-check:
     name: Documentation Build
