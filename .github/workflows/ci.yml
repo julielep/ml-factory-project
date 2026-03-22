@@ -11,10 +11,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
       - name: Check for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -33,10 +30,8 @@ jobs:
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
-        # Cette fois, on définit explicitement le point d'entrée pour éviter que le conteneur s'arrête
         options: >-
-          --entrypoint /usr/bin/minio
-          server /data
+          --entrypoint "/bin/sh"
 
     steps:
       - uses: actions/checkout@v4
@@ -56,9 +51,12 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "minioadmin"
           MLFLOW_TRACKING_URI: "sqlite:///mlflow_test.db"
         run: |
-          echo "Waiting for MinIO service..."
-          # On attend que le port 9000 réponde
+          # On force le démarrage du serveur à l'intérieur du conteneur déjà lancé
+          docker exec ${{ job.services.minio.id }} minio server /data &
+          
+          echo "Waiting for MinIO..."
           timeout 30s sh -c 'until curl -s http://127.0.0.1:9000/minio/health/live; do sleep 2; done'
+          
           uv run pytest --cov=fastapi_api --cov=app_front .
 
   documentation-check:
@@ -66,11 +64,8 @@ jobs:
     needs: test-and-lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-      - name: Build HTML Documentation
-        run: |
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: |
           mkdir -p build/html
           uv run sphinx-build -b html docs/source/ build/html
