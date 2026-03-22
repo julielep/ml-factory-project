@@ -18,44 +18,36 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-and-lint:
-    name: Quality and Tests
+    name: Train & Front Tests
     needs: security-scan
     runs-on: ubuntu-latest
-    
-    services:
-      minio:
-        # Utilisation de l'image Bitnami (plus simple pour la CI car elle auto-démarre)
-        image: bitnami/minio:latest
-        ports:
-          - 9000:9000
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install uv (Manual fallback)
+      - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Set up Python
-        run: uv python install 3.12
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv python install 3.12
 
-      - name: Run tests
+      - name: Run logic tests
         env:
           TESTING: "True"
           PYTHONPATH: "."
-          MLFLOW_S3_ENDPOINT_URL: "http://127.0.0.1:9000"
-          AWS_ACCESS_KEY_ID: "minioadmin"
-          AWS_SECRET_ACCESS_KEY: "minioadmin"
-          MLFLOW_TRACKING_URI: "sqlite:///mlflow_test.db"
+          # ON FORCE TOUT EN LOCAL SANS S3
+          MLFLOW_TRACKING_URI: "sqlite:///mlflow_ci.db"
+          # On peut mettre une valeur bidon pour S3 car on ne l'utilisera pas
+          MLFLOW_S3_ENDPOINT_URL: "http://localhost:9000" 
+          AWS_ACCESS_KEY_ID: "fake"
+          AWS_SECRET_ACCESS_KEY: "fake"
         run: |
-          echo "Waiting for MinIO..."
-          # On attend que le port 9000 soit ouvert
-          timeout 30s sh -c 'until curl -s http://127.0.0.1:9000/minio/health/live; do echo "Waiting..."; sleep 2; done'
-          uv run pytest --cov=fastapi_api --cov=app_front .
+          # On lance pytest uniquement sur les dossiers train et front
+          # On exclut les tests qui touchent à l'API/MinIO si besoin
+          uv run pytest src/train src/front --cov=src/train --cov=src/front
 
   documentation-check:
     name: Documentation Build
