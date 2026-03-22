@@ -1,6 +1,6 @@
-"""Tests unitaires du module src.train.train."""
+"""Tests unitaires du module src.train.services.prep_data."""
 
-from src.train.train import prepare_data
+from src.train.services.prep_data import prepare_data
 
 
 def test_prepare_data_returns_four_objects():

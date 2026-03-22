@@ -1,3 +1,7 @@
+"""Module d'entraînement et d'enregistrement du modèle dans MLflow."""
+
+import os
+
 import mlflow
 import mlflow.sklearn
 from dotenv import load_dotenv
@@ -11,10 +15,18 @@ from src.train.services.prep_data import prepare_data
 load_dotenv()
 
 
-def train_and_register(model, params, X_train, X_test, y_train, y_test):
-    # Configuration MLflow AVANT le run
-    mlflow.set_tracking_uri("http://localhost:5000")
+def configure_mlflow():
+    """Configure MLflow uniquement hors mode test."""
+    if os.getenv("TESTING") == "True":
+        return
+
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"))
     mlflow.set_experiment("My_Experiment")
+
+
+def train_and_register(model, params, X_train, X_test, y_train, y_test):
+    """Entraîne un modèle, log les métriques et l'enregistre dans MLflow."""
+    configure_mlflow()
 
     model_name = "iris_model"
 
@@ -40,26 +52,35 @@ def train_and_register(model, params, X_train, X_test, y_train, y_test):
     print(f"✅ Modèle enregistré dans MLflow Registry : {model_name}")
 
 
-# Chargement des données
-X_train, X_test, y_train, y_test = prepare_data()
+def assign_production_alias(model_name="iris_model"):
+    """Assigne l'alias 'production' à la dernière version du modèle."""
+    if os.getenv("TESTING") == "True":
+        return
 
-# Modèle
-rf_model = RandomForestClassifier()
-lr_model = LogisticRegression()
+    client = MlflowClient()
 
-# Paramètres à logger
-params = rf_model.get_params()
+    latest_version = client.get_latest_versions(model_name, stages=["None"])[0].version
+    client.set_registered_model_alias(model_name, "production", latest_version)
 
-# Entraîner + enregistrer
-train_and_register(lr_model, params, X_train, X_test, y_train, y_test)
 
-# 3. Gestion de l'Alias 'Production' via MlflowClient
-client = MlflowClient()
+def main():
+    """Pipeline complet d'entraînement."""
+    # Chargement des données
+    X_train, X_test, y_train, y_test = prepare_data()
 
-# On récupère la toute dernière version créée
-latest_version = client.get_latest_versions("iris_model", stages=["None"])[0].version
+    # Modèles
+    rf_model = RandomForestClassifier()
+    lr_model = LogisticRegression(max_iter=200)
 
-# On lui attribue l'alias 'Production'
-client.set_registered_model_alias("iris_model", "production", latest_version)
+    # Paramètres à logger (on peut logger ceux du modèle réellement entraîné aussi)
+    params = rf_model.get_params()
 
-# print(f"✅ Alias 'Production' assigné à la version {latest_version} de iris_model")
+    # Entraîner + enregistrer
+    train_and_register(lr_model, params, X_train, X_test, y_train, y_test)
+
+    # Gestion de l'alias 'Production'
+    assign_production_alias("iris_model")
+
+
+if __name__ == "__main__":
+    main()
