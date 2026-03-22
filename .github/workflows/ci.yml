@@ -24,21 +24,22 @@ jobs:
     
     services:
       minio:
-        image: minio/minio:latest
+        # Utilisation de l'image Bitnami (plus simple pour la CI car elle auto-démarre)
+        image: bitnami/minio:latest
         ports:
           - 9000:9000
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
-        options: >-
-          --entrypoint "/bin/sh"
 
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        
+
+      - name: Install uv (Manual fallback)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Set up Python
         run: uv python install 3.12
 
@@ -51,12 +52,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "minioadmin"
           MLFLOW_TRACKING_URI: "sqlite:///mlflow_test.db"
         run: |
-          # On force le démarrage du serveur à l'intérieur du conteneur déjà lancé
-          docker exec ${{ job.services.minio.id }} minio server /data &
-          
           echo "Waiting for MinIO..."
-          timeout 30s sh -c 'until curl -s http://127.0.0.1:9000/minio/health/live; do sleep 2; done'
-          
+          # On attend que le port 9000 soit ouvert
+          timeout 30s sh -c 'until curl -s http://127.0.0.1:9000/minio/health/live; do echo "Waiting..."; sleep 2; done'
           uv run pytest --cov=fastapi_api --cov=app_front .
 
   documentation-check:
@@ -65,7 +63,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: |
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Build HTML Documentation
+        run: |
           mkdir -p build/html
           uv run sphinx-build -b html docs/source/ build/html
